@@ -8,6 +8,10 @@ export const onboardingEvents = [
     evento: 'acesso_negado',
   },
   {
+    conta: 'Conta Gestora A',
+    evento: 'acesso_negado',
+  },
+  {
     conta: 'Conta Gestora B',
     evento: 'usuario_criado',
   },
@@ -38,6 +42,11 @@ export const feedbackSignals = [
     conta: 'Conta Gestora A',
     sentimento: 'negativo',
     tema: 'acesso',
+  },
+  {
+    conta: 'Conta Gestora A',
+    sentimento: 'negativo',
+    tema: 'permissoes',
   },
   {
     conta: 'Conta Gestora B',

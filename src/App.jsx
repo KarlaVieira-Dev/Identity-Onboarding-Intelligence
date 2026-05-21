@@ -18,6 +18,7 @@ import {
   Lightbulb,
   LineChart,
   ListChecks,
+  MessageSquareWarning,
   PanelLeft,
   RadioTower,
   Search,
@@ -35,6 +36,7 @@ const navigation = [
   { id: 'riscos', label: 'Riscos', icon: ShieldAlert },
   { id: 'sinais', label: 'Sinais', icon: RadioTower },
   { id: 'insights', label: 'Insights', icon: Lightbulb },
+  { id: 'alertas', label: 'Alertas', icon: BellRing },
   { id: 'auditoria', label: 'Auditoria', icon: History },
 ];
 
@@ -89,6 +91,14 @@ function getAccountEcosystemSignals(conta) {
 
 function getFeedbackTheme(conta) {
   return feedbackSignals.find((signal) => signal.conta === conta && signal.sentimento === 'negativo')?.tema;
+}
+
+function getAccountEventCount(conta, eventName) {
+  return onboardingEvents.filter((event) => event.conta === conta && event.evento === eventName).length;
+}
+
+function getNegativeFeedbackCount(conta) {
+  return feedbackSignals.filter((signal) => signal.conta === conta && signal.sentimento === 'negativo').length;
 }
 
 const accountInputs = impactedAccounts.map((conta) => ({
@@ -205,6 +215,62 @@ const accounts = accountInputs.map(buildAccountScore);
 const rankedAccounts = [...accounts].sort((a, b) => b.score - a.score);
 const priorityAccounts = [...accounts].sort((a, b) => a.priority - b.priority || b.score - a.score || a.name.localeCompare(b.name));
 const topPriorityAccounts = priorityAccounts.slice(0, 3);
+
+function getAlertCriticality(account, type, signalCount = 1) {
+  if (account.risk === 'Critico' || signalCount > 2) return 'critica';
+  if (account.score > 50 || type === 'onboarding' || type === 'feedback') return 'alta';
+  if (type === 'comportamento') return 'media';
+  return 'baixa';
+}
+
+function createAlert(account, type, reason, action, index, signalCount = 1) {
+  return {
+    id: `${account.name}-${type}-${index}`,
+    tipo: type,
+    criticidade: getAlertCriticality(account, type, signalCount),
+    conta: account.name,
+    motivo: reason,
+    mensagem: `${account.name}: ${reason}`,
+    acao: action,
+    timestamp: index === 0 ? 'Agora' : `Ha ${index * 7} min`,
+  };
+}
+
+function generateAlerts(account) {
+  const alerts = [];
+  const deniedAccessCount = getAccountEventCount(account.name, 'acesso_negado');
+  const negativeFeedbackCount = getNegativeFeedbackCount(account.name);
+  const simultaneousSignals = Object.values(account.signals).filter(Boolean).length;
+
+  if (account.score > 50) {
+    alerts.push(createAlert(account, 'risco', `Score ${account.score} acima do limite preventivo.`, account.acaoSugerida, alerts.length, simultaneousSignals));
+  }
+
+  if (account.signals.onboardingSemConclusao) {
+    alerts.push(createAlert(account, 'onboarding', 'Onboarding iniciado sem conclusao.', 'Acompanhar onboarding imediatamente.', alerts.length, simultaneousSignals));
+  }
+
+  if (deniedAccessCount > 1) {
+    alerts.push(createAlert(account, 'comportamento', `${deniedAccessCount} acessos negados detectados.`, 'Revisar permissoes e bloqueios de acesso.', alerts.length, simultaneousSignals));
+  }
+
+  if (negativeFeedbackCount > 1) {
+    alerts.push(createAlert(account, 'feedback', 'Feedback negativo recorrente identificado.', 'Agrupar temas de feedback e acionar responsavel pela conta.', alerts.length, simultaneousSignals));
+  }
+
+  if (simultaneousSignals > 2) {
+    alerts.push(createAlert(account, 'comportamento', 'Combinacao de mais de 2 sinais simultaneos.', 'Priorizar revisao operacional da conta.', alerts.length, simultaneousSignals));
+  }
+
+  return alerts;
+}
+
+const alerts = priorityAccounts.flatMap(generateAlerts);
+const alertSummary = {
+  total: alerts.length,
+  critica: alerts.filter((alert) => alert.criticidade === 'critica').length,
+  alta: alerts.filter((alert) => alert.criticidade === 'alta').length,
+};
 
 const users = [
   { name: 'Marina Costa', account: 'Conta Gestora A', role: 'Admin', score: 65, status: 'Critico', signal: 'Acesso negado apos onboarding iniciado' },
@@ -336,6 +402,14 @@ const audit = [
     time: `Hoje, 09:${String(45 + index).padStart(2, '0')}`,
     status: 'Concluido',
   })),
+  ...alerts.slice(0, 4).map((alert, index) => ({
+    event: `Alerta criado para ${alert.conta}: ${alert.tipo}`,
+    owner: 'Motor de alertas proativos',
+    time: `Hoje, 09:${String(50 + index).padStart(2, '0')}`,
+    status: 'Concluido',
+  })),
+  { event: 'Alerta atualizado para Conta Gestora A: criticidade alta', owner: 'Motor de alertas proativos', time: 'Hoje, 09:55', status: 'Concluido' },
+  { event: 'Alerta encerrado para Conta Gestora B: monitoramento preventivo', owner: 'Motor de alertas proativos', time: 'Hoje, 09:58', status: 'Concluido' },
   { event: 'Insight gerado para comportamento fora do padrao', owner: 'Analise preditiva', time: 'Hoje, 09:31', status: 'Concluido' },
   { event: 'Acao sugerida para contas com onboarding incompleto', owner: 'Regras aplicadas', time: 'Hoje, 09:44', status: 'Revisao' },
 ];
@@ -375,6 +449,13 @@ const metrics = [
     detail: 'uma analise por conta impactada',
     icon: FileSearch,
     tone: 'text-sky bg-blue-50',
+  },
+  {
+    label: 'alertas ativos',
+    value: alertSummary.total,
+    detail: `${alertSummary.critica} criticos, ${alertSummary.alta} altos`,
+    icon: BellRing,
+    tone: 'text-coral bg-red-50',
   },
 ];
 
@@ -422,8 +503,8 @@ const ecosystemFlow = [
 ];
 
 function statusTone(value) {
-  if (['Alto', 'Critico', 'Alta'].includes(value)) return 'bg-red-50 text-red-700 ring-red-100';
-  if (['Medio', 'Atencao', 'Media', 'Revisao'].includes(value)) return 'bg-yellow-50 text-yellow-800 ring-yellow-100';
+  if (['Alto', 'Critico', 'Alta', 'alta', 'critica'].includes(value)) return 'bg-red-50 text-red-700 ring-red-100';
+  if (['Medio', 'Atencao', 'Media', 'media', 'Revisao'].includes(value)) return 'bg-yellow-50 text-yellow-800 ring-yellow-100';
   return 'bg-emerald-50 text-emerald-700 ring-emerald-100';
 }
 
@@ -495,6 +576,7 @@ function App() {
           {activePage === 'riscos' && <Risks />}
           {activePage === 'sinais' && <Signals />}
           {activePage === 'insights' && <Insights />}
+          {activePage === 'alertas' && <Alerts />}
           {activePage === 'auditoria' && <Audit />}
         </div>
       </main>
@@ -803,6 +885,56 @@ function Signals() {
             </div>
           </section>
         ))}
+      </div>
+    </PagePanel>
+  );
+}
+
+const alertTypeIcons = {
+  risco: ShieldAlert,
+  onboarding: GitBranch,
+  feedback: MessageSquareWarning,
+  comportamento: Activity,
+};
+
+function Alerts() {
+  return (
+    <PagePanel title="Alertas proativos" icon={BellRing}>
+      <div className="grid gap-4 xl:grid-cols-2">
+        {alerts.map((alert) => {
+          const Icon = alertTypeIcons[alert.tipo] || BellRing;
+          return (
+            <article key={alert.id} className="rounded-md border border-black/10 bg-[#f9faf7] p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white text-coral ring-1 ring-black/10">
+                    <Icon size={19} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">{alert.conta}</h3>
+                    <p className="mt-1 text-sm text-moss">{alert.tipo}</p>
+                  </div>
+                </div>
+                <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ${statusTone(alert.criticidade)}`}>{alert.criticidade}</span>
+              </div>
+
+              <div className="mt-5 grid gap-3">
+                <div className="rounded-md border border-black/10 bg-white p-4">
+                  <p className="text-sm font-semibold">Motivo</p>
+                  <p className="mt-2 text-sm leading-6 text-graphite">{alert.motivo}</p>
+                </div>
+                <div className="rounded-md border border-black/10 bg-white p-4">
+                  <p className="text-sm font-semibold">Acao sugerida</p>
+                  <p className="mt-2 text-sm leading-6 text-graphite">{alert.acao}</p>
+                </div>
+                <div className="rounded-md border border-black/10 bg-white p-4">
+                  <p className="text-sm font-semibold">Recebido</p>
+                  <p className="mt-2 text-sm leading-6 text-graphite">{alert.timestamp}</p>
+                </div>
+              </div>
+            </article>
+          );
+        })}
       </div>
     </PagePanel>
   );
