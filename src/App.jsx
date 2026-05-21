@@ -143,6 +143,22 @@ function explainSignal(key, accountName) {
   return `${label} (+${scoreWeights[key]})`;
 }
 
+function joinText(items) {
+  if (items.length === 0) return 'sinais insuficientes';
+  if (items.length === 1) return items[0];
+  return `${items.slice(0, -1).join(', ')} e ${items[items.length - 1]}`;
+}
+
+function generateExplanation({ conta, score, risco, motivos, sinaisEncontrados, acaoSugerida }) {
+  const readableSignals = sinaisEncontrados.length > 0 ? joinText(sinaisEncontrados) : joinText(motivos);
+  const frictionContext =
+    sinaisEncontrados.includes('feedback negativo') || sinaisEncontrados.includes('acesso negado')
+      ? 'Esse comportamento indica aumento de friccao operacional e possibilidade de abandono ou retrabalho.'
+      : 'Esse comportamento indica necessidade de acompanhamento para evitar atraso operacional.';
+
+  return `${conta} apresenta risco ${risco} com score ${score} devido a combinacao de ${readableSignals}.\n\n${frictionContext}\n\nRecomendacao:\n${acaoSugerida}.`;
+}
+
 function getPriorityBoosts(signals) {
   return [
     signals.feedbackNegativo && 'feedback negativo',
@@ -174,7 +190,15 @@ function buildAccountScore(input) {
   const motivos = activeSignals.map((key) => explainSignal(key, input.name));
   const account = { ...input, score, risk, nivel: risk, reasons, motivos };
   const acaoSugerida = suggestAction(account);
-  return { ...account, ...calculatePriority(account), action: acaoSugerida, acaoSugerida };
+  const explicacao = generateExplanation({
+    conta: input.name,
+    score,
+    risco: risk,
+    motivos,
+    sinaisEncontrados: reasons,
+    acaoSugerida,
+  });
+  return { ...account, ...calculatePriority(account), action: acaoSugerida, acaoSugerida, explicacao };
 }
 
 const accounts = accountInputs.map(buildAccountScore);
@@ -245,6 +269,16 @@ const insights = [
     .map((journey) => `${journey.name}: Jornada com possivel friccao na etapa de ${journey.stage.toLowerCase()}.`),
 ];
 
+const executiveSummary = [
+  `${priorityAccounts.filter((account) => account.priority <= 2).length} contas exigem acompanhamento imediato.`,
+  accounts.some((account) => account.signals.onboardingSemConclusao)
+    ? 'Ha indicios de friccao recorrente em onboarding.'
+    : 'Onboarding segue sem friccao recorrente relevante.',
+  accounts.some((account) => account.signals.feedbackNegativo)
+    ? 'Feedback negativo esta impactando score operacional.'
+    : 'Feedbacks negativos nao aparecem como fator dominante neste ciclo.',
+];
+
 const audit = [
   ...accounts.map((account, index) => ({
     event: `Score calculado para ${account.name}: ${account.score}`,
@@ -256,6 +290,12 @@ const audit = [
     event: `Score explicado para ${account.name}: ${account.motivos.length} motivos`,
     owner: 'Camada de explicabilidade',
     time: `Hoje, 09:${String(15 + index).padStart(2, '0')}`,
+    status: 'Concluido',
+  })),
+  ...accounts.map((account, index) => ({
+    event: `Explicacao gerada para ${account.name}`,
+    owner: 'Narrativa executiva local',
+    time: `Hoje, 09:${String(18 + index).padStart(2, '0')}`,
     status: 'Concluido',
   })),
   ...rankedAccounts
@@ -270,6 +310,12 @@ const audit = [
     event: `Acao sugerida gerada para ${account.name}`,
     owner: 'Motor de recomendacao local',
     time: `Hoje, 09:${String(25 + index).padStart(2, '0')}`,
+    status: 'Concluido',
+  })),
+  ...topPriorityAccounts.map((account, index) => ({
+    event: `Recomendacao criada para ${account.name}`,
+    owner: 'Narrativa executiva local',
+    time: `Hoje, 09:${String(30 + index).padStart(2, '0')}`,
     status: 'Concluido',
   })),
   ...priorityAccounts.map((account, index) => ({
@@ -532,6 +578,22 @@ function Dashboard() {
       </section>
 
       <section className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
+        <SectionTitle icon={Brain} title="Explicacoes automaticas" />
+        <div className="mt-5 grid gap-4 xl:grid-cols-3">
+          {topPriorityAccounts.map((account) => (
+            <article key={account.name} className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="text-lg font-semibold">{account.name}</h3>
+                <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ${statusTone(account.nivel)}`}>{account.nivel}</span>
+              </div>
+              <p className="mt-4 whitespace-pre-line text-sm leading-6 text-graphite">{account.explicacao}</p>
+              <p className="mt-4 rounded-md border border-black/10 bg-white p-3 text-sm font-medium leading-6 text-graphite">"{account.acaoSugerida}"</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
         <SectionTitle icon={RadioTower} title="Dados recebidos do Ecossistema" />
         <div className="mt-5 grid gap-4 md:grid-cols-3">
           {ecosystemSummary.map((item) => {
@@ -749,6 +811,16 @@ function Signals() {
 function Insights() {
   return (
     <PagePanel title="Insights acionaveis" icon={Lightbulb}>
+      <div className="mb-5 rounded-md border border-black/10 bg-[#f9faf7] p-5">
+        <SectionTitle icon={ClipboardCheck} title="Resumo executivo" />
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {executiveSummary.map((item) => (
+            <div key={item} className="rounded-md border border-black/10 bg-white p-4 text-sm leading-6 text-graphite">
+              {item}
+            </div>
+          ))}
+        </div>
+      </div>
       <div className="grid gap-4 md:grid-cols-2">
         {insights.map((item, index) => (
           <article key={item} className="rounded-md border border-black/10 bg-[#f9faf7] p-5">
