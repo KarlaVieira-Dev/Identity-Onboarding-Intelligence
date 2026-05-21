@@ -52,6 +52,13 @@ const signalLabels = {
   multiplosEventos: 'multiplos eventos',
 };
 
+const explanationLabels = {
+  onboardingSemConclusao: 'onboarding iniciado sem conclusao',
+  acessoNegado: 'acessos negados recorrentes',
+  feedbackNegativo: 'feedback negativo',
+  multiplosEventos: 'multiplos eventos simultaneos',
+};
+
 const accountMetadata = {
   'Conta Gestora A': { segment: 'Fintech', users: 128, friction: 'Acesso e credenciais' },
   'Conta Gestora B': { segment: 'Saude', users: 84, friction: 'Cadastro inicial' },
@@ -71,6 +78,10 @@ function getAccountEcosystemSignals(conta) {
     feedbackNegativo: feedbacks.some((signal) => signal.sentimento === 'negativo'),
     multiplosEventos: events.length > 1,
   };
+}
+
+function getFeedbackTheme(conta) {
+  return feedbackSignals.find((signal) => signal.conta === conta && signal.sentimento === 'negativo')?.tema;
 }
 
 const accountInputs = impactedAccounts.map((conta) => ({
@@ -113,10 +124,16 @@ function classifyScore(score) {
 function suggestAction(account) {
   const { signals, risk } = account;
   if (risk === 'Critico') return 'Abrir intervencao executiva e revisar identidade da conta';
-  if (signals.onboardingSemConclusao && signals.acessoNegado) return 'Acionar onboarding assistido e validar bloqueios de acesso';
+  if (signals.onboardingSemConclusao && signals.acessoNegado) return 'Acompanhar onboarding e revisar permissoes';
   if (signals.feedbackNegativo) return 'Agrupar feedbacks e priorizar correcao da etapa reportada';
   if (signals.multiplosEventos) return 'Revisar sequencia operacional e orientar proxima etapa';
   return 'Manter monitoramento preventivo';
+}
+
+function explainSignal(key, accountName) {
+  const theme = getFeedbackTheme(accountName);
+  const label = key === 'feedbackNegativo' && theme ? `${explanationLabels[key]} sobre ${theme}` : explanationLabels[key];
+  return `${label} (+${scoreWeights[key]})`;
 }
 
 function buildAccountScore(input) {
@@ -129,8 +146,10 @@ function buildAccountScore(input) {
   );
   const risk = classifyScore(score);
   const reasons = activeSignals.map((key) => signalLabels[key]);
-  const account = { ...input, score, risk, reasons };
-  return { ...account, action: suggestAction(account) };
+  const motivos = activeSignals.map((key) => explainSignal(key, input.name));
+  const account = { ...input, score, risk, nivel: risk, reasons, motivos };
+  const acaoSugerida = suggestAction(account);
+  return { ...account, action: acaoSugerida, acaoSugerida };
 }
 
 const accounts = accountInputs.map(buildAccountScore);
@@ -203,6 +222,12 @@ const audit = [
     time: `Hoje, 09:${String(10 + index).padStart(2, '0')}`,
     status: 'Concluido',
   })),
+  ...accounts.map((account, index) => ({
+    event: `Score explicado para ${account.name}: ${account.motivos.length} motivos`,
+    owner: 'Camada de explicabilidade',
+    time: `Hoje, 09:${String(15 + index).padStart(2, '0')}`,
+    status: 'Concluido',
+  })),
   ...rankedAccounts
     .filter((account) => ['Alto', 'Critico'].includes(account.risk))
     .map((account, index) => ({
@@ -211,6 +236,12 @@ const audit = [
       time: `Hoje, 09:${String(20 + index).padStart(2, '0')}`,
       status: 'Concluido',
     })),
+  ...rankedAccounts.map((account, index) => ({
+    event: `Acao sugerida gerada para ${account.name}`,
+    owner: 'Motor de recomendacao local',
+    time: `Hoje, 09:${String(25 + index).padStart(2, '0')}`,
+    status: 'Concluido',
+  })),
   { event: 'Insight gerado para comportamento fora do padrao', owner: 'Analise preditiva', time: 'Hoje, 09:31', status: 'Concluido' },
   { event: 'Acao sugerida para contas com onboarding incompleto', owner: 'Regras aplicadas', time: 'Hoje, 09:44', status: 'Revisao' },
 ];
@@ -243,6 +274,13 @@ const metrics = [
     detail: `${journeys.filter((journey) => journey.score >= 61).length} com score alto`,
     icon: GitBranch,
     tone: 'text-moss bg-emerald-50',
+  },
+  {
+    label: 'explicacoes geradas',
+    value: accounts.length,
+    detail: 'uma analise por conta impactada',
+    icon: FileSearch,
+    tone: 'text-sky bg-blue-50',
   },
 ];
 
@@ -388,7 +426,7 @@ function Dashboard() {
             <BellRing size={18} />
             <span className="text-sm font-semibold">Prioridade do dia</span>
           </div>
-          <p className="mt-5 text-4xl font-semibold">{rankedAccounts.filter((account) => ['Alto', 'Critico'].includes(account.risk)).length}</p>
+          <p className="mt-5 text-4xl font-semibold">{rankedAccounts.filter((account) => ['Medio', 'Alto', 'Critico'].includes(account.risk)).length}</p>
           <p className="mt-2 text-sm text-white/75">contas exigem intervencao por combinacao de score elevado, friccao e sinais recorrentes.</p>
           <button className="mt-6 h-10 rounded-md bg-mint px-4 text-sm font-semibold text-ink">Revisar riscos</button>
         </div>
@@ -557,13 +595,44 @@ function Journeys() {
 
 function Risks() {
   return (
-    <DataTable
-      title="Ranking de contas por score"
-      icon={ShieldAlert}
-      columns={['Conta', 'Score', 'Nivel de risco', 'Principais motivos', 'Acao sugerida']}
-      rows={rankedAccounts.map((item) => [item.name, item.score, item.risk, item.reasons.join(', ') || 'sem sinal critico', item.action])}
-      badgeIndexes={[2]}
-    />
+    <PagePanel title="Ranking de contas por score" icon={ShieldAlert}>
+      <div className="grid gap-4 xl:grid-cols-2">
+        {rankedAccounts.map((account) => (
+          <article key={account.name} className="rounded-md border border-black/10 bg-[#f9faf7] p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold">{account.name}</h3>
+                <p className="mt-1 text-sm text-moss">{account.segment}</p>
+              </div>
+              <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ${statusTone(account.nivel)}`}>{account.nivel}</span>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-md border border-black/10 bg-white p-4">
+                <p className="text-sm text-moss">Score</p>
+                <p className="mt-2 text-3xl font-semibold">{account.score}</p>
+              </div>
+              <div className="rounded-md border border-black/10 bg-white p-4">
+                <p className="text-sm text-moss">Risco</p>
+                <p className="mt-2 text-2xl font-semibold">{account.nivel}</p>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-md border border-black/10 bg-white p-4">
+              <p className="font-semibold">Motivos</p>
+              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-graphite">
+                {account.motivos.length > 0 ? account.motivos.map((motivo) => <li key={motivo}>{motivo}</li>) : <li>sem sinal critico identificado</li>}
+              </ul>
+            </div>
+
+            <div className="mt-5 rounded-md border border-black/10 bg-white p-4">
+              <p className="font-semibold">Sugestao</p>
+              <p className="mt-2 text-sm leading-6 text-graphite">"{account.acaoSugerida}"</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </PagePanel>
   );
 }
 
