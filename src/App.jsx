@@ -25,6 +25,10 @@ import {
   ShieldAlert,
   Sparkles,
   ClipboardList,
+  GraduationCap,
+  HelpCircle,
+  Info,
+  X,
   UserRound,
   UsersRound,
 } from 'lucide-react';
@@ -40,6 +44,82 @@ const navigation = [
   { id: 'alertas', label: 'Alertas', icon: BellRing },
   { id: 'planos', label: 'Planos de Acao', icon: ClipboardList },
   { id: 'auditoria', label: 'Auditoria', icon: History },
+];
+
+const menuHelp = {
+  dashboard: {
+    objetivo: 'Visao executiva consolidada.',
+    pergunta: 'Onde devo agir primeiro?',
+  },
+  contas: {
+    objetivo: 'Visualizar contas monitoradas.',
+    pergunta: 'Quais contas exigem atencao?',
+  },
+  usuarios: {
+    objetivo: 'Visualizar comportamento e risco por usuario.',
+    pergunta: 'Quais usuarios apresentam comportamento fora do padrao?',
+  },
+  jornadas: {
+    objetivo: 'Identificar friccoes no onboarding.',
+    pergunta: 'Em qual etapa existem problemas?',
+  },
+  riscos: {
+    objetivo: 'Mostrar score e classificacao.',
+    pergunta: 'O que representa maior risco?',
+  },
+  sinais: {
+    objetivo: 'Exibir eventos interpretados.',
+    pergunta: 'Quais comportamentos impactam score?',
+  },
+  insights: {
+    objetivo: 'Gerar analises automaticas.',
+    pergunta: 'O que esta acontecendo?',
+  },
+  alertas: {
+    objetivo: 'Notificar problemas importantes.',
+    pergunta: 'O que exige atencao imediata?',
+  },
+  planos: {
+    objetivo: 'Transformar risco em tarefas.',
+    pergunta: 'O que preciso fazer?',
+  },
+  auditoria: {
+    objetivo: 'Exibir rastreabilidade.',
+    pergunta: 'Como o sistema chegou nessa decisao?',
+  },
+};
+
+const widgetHelp = {
+  'contas em risco': 'Mostra contas com score acima do limite de atencao. E calculado pela classificacao de risco das contas e importa porque aponta onde atuar antes que a friccao cresca.',
+  'usuarios criticos': 'Indica usuarios com comportamento sensivel ou score alto. E calculado a partir da base local simulada de usuarios e ajuda a localizar possiveis bloqueios operacionais.',
+  'score medio': 'Representa a media dos sinais recebidos pelas contas monitoradas. Quanto maior, maior o potencial de risco operacional.',
+  'jornadas com friccao': 'Conta jornadas com etapas problemáticas. E calculado por friccao e score de jornada e importa para encontrar gargalos no onboarding.',
+  'explicacoes geradas': 'Conta quantas analises explicaveis foram criadas. E calculado uma vez por conta impactada e ajuda a entender o porquê de cada decisao.',
+  'alertas ativos': 'Mostra alertas preventivos abertos. E calculado pelas regras de score, sinais simultaneos e feedbacks e importa para agir antes do problema crescer.',
+  'planos ativos': 'Mostra planos de acao gerados automaticamente. E calculado a partir dos riscos, alertas e sinais e transforma inteligencia em tarefas praticas.',
+  'Prioridades automaticas': 'Ranking que responde onde agir primeiro. E calculado por prioridade, score e sinais agravantes.',
+  'Explicacoes automaticas': 'Narrativas executivas geradas localmente a partir do score, sinais e acao sugerida.',
+  'Dados recebidos do Ecossistema': 'Resumo dos eventos e feedbacks simulados recebidos de outros produtos do ecossistema.',
+  'Como funciona': 'Mostra o fluxo conceitual que transforma eventos em classificacao e decisao.',
+  'Regras aplicadas': 'Explica as regras locais usadas para classificar sinais, scores, alertas e acoes.',
+  'Conexão com o Ecossistema': 'Mostra como os produtos do ecossistema contribuem para o Identity & Onboarding Intelligence.',
+  'ConexÃ£o com o Ecossistema': 'Mostra como os produtos do ecossistema contribuem para o Identity & Onboarding Intelligence.',
+  'Fluxo do ecossistema': 'Mostra como feedbacks, eventos e sinais alimentam score, risco e acao sugerida.',
+  'Ranking de contas por prioridade': 'Ordena contas pela urgencia de atuacao, combinando prioridade automatica e score.',
+  'Sinais agrupados': 'Agrupa sinais por onboarding, operacao, feedback e comportamento para explicar o impacto no score.',
+  'Alertas proativos': 'Lista notificacoes geradas quando sinais indicam risco crescente.',
+  'Planos de Acao inteligentes': 'Converte alertas e riscos em passos praticos para resolucao.',
+  'Insights acionaveis': 'Resume analises geradas automaticamente para apoiar decisao.',
+  'Resumo executivo': 'Sintetiza o estado operacional em frases curtas para leitura rapida.',
+  'Trilha de auditoria': 'Registra como scores, alertas, prioridades e planos foram produzidos.',
+};
+
+const tourSteps = [
+  { page: 'dashboard', title: 'Dashboard', text: 'Comece pela visao executiva: aqui aparecem prioridades, alertas, explicacoes e indicadores principais.' },
+  { page: 'contas', title: 'Contas', text: 'Veja quais contas estao monitoradas, seus scores, riscos e sinais ativos.' },
+  { page: 'riscos', title: 'Riscos', text: 'Entenda quais contas representam maior risco e por quais motivos.' },
+  { page: 'alertas', title: 'Alertas', text: 'Acompanhe notificacoes proativas antes que a friccao operacional aumente.' },
+  { page: 'planos', title: 'Planos de Acao', text: 'Transforme risco em passos praticos de resolucao com impacto estimado.' },
 ];
 
 const scoreWeights = {
@@ -590,7 +670,26 @@ function statusTone(value) {
 function App() {
   const [activePage, setActivePage] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [tourIndex, setTourIndex] = useState(null);
   const current = useMemo(() => navigation.find((item) => item.id === activePage), [activePage]);
+  const activeTourStep = tourIndex === null ? null : tourSteps[tourIndex];
+
+  function startTour() {
+    setHelpOpen(false);
+    setTourIndex(0);
+    setActivePage(tourSteps[0].page);
+  }
+
+  function nextTourStep() {
+    const nextIndex = tourIndex + 1;
+    if (nextIndex >= tourSteps.length) {
+      setTourIndex(null);
+      return;
+    }
+    setTourIndex(nextIndex);
+    setActivePage(tourSteps[nextIndex].page);
+  }
 
   return (
     <div className="min-h-screen bg-[#f6f7f4] text-ink">
@@ -641,9 +740,27 @@ function App() {
               <p className="text-xs text-moss md:text-sm">Dados simulados locais para decisao preditiva em onboarding B2B.</p>
             </div>
           </div>
-          <div className="hidden h-10 items-center gap-2 rounded-md border border-black/10 bg-white px-3 text-sm text-moss md:flex">
-            <Search size={16} />
-            <span>Ambiente local</span>
+          <div className="flex items-center gap-2">
+            <div className="hidden h-10 items-center gap-2 rounded-md border border-black/10 bg-white px-3 text-sm text-moss md:flex">
+              <Search size={16} />
+              <span>Ambiente local</span>
+            </div>
+            <button
+              className="flex h-10 items-center gap-2 rounded-md border border-black/10 bg-white px-3 text-sm font-medium text-graphite hover:bg-black/5"
+              onClick={() => setHelpOpen(true)}
+              title="Abrir ajuda"
+            >
+              <HelpCircle size={16} />
+              <span className="hidden sm:inline">Ajuda</span>
+            </button>
+            <button
+              className="flex h-10 items-center gap-2 rounded-md border border-black/10 bg-white px-3 text-sm font-medium text-graphite hover:bg-black/5"
+              onClick={startTour}
+              title="Fazer tour"
+            >
+              <GraduationCap size={16} />
+              <span className="hidden sm:inline">Fazer Tour</span>
+            </button>
           </div>
         </header>
 
@@ -660,6 +777,8 @@ function App() {
           {activePage === 'auditoria' && <Audit />}
         </div>
       </main>
+      {helpOpen && <HelpPanel onClose={() => setHelpOpen(false)} onStartTour={startTour} />}
+      {activeTourStep && <TourOverlay step={activeTourStep} index={tourIndex} onNext={nextTourStep} onClose={() => setTourIndex(null)} />}
     </div>
   );
 }
@@ -694,7 +813,10 @@ function Dashboard() {
           return (
             <div key={metric.label} className="rounded-md border border-black/10 bg-white p-4 shadow-panel">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-sm text-moss">{metric.label}</span>
+                <span className="flex items-center gap-1 text-sm text-moss">
+                  {metric.label}
+                  <TooltipIcon text={widgetHelp[metric.label]} />
+                </span>
                 <span className={`flex h-10 w-10 items-center justify-center rounded-md ${metric.tone}`}>
                   <Icon size={19} />
                 </span>
@@ -858,6 +980,95 @@ function Dashboard() {
   );
 }
 
+function HelpPanel({ onClose, onStartTour }) {
+  return (
+    <div className="fixed inset-0 z-40 bg-black/30">
+      <aside className="ml-auto flex h-full w-full max-w-xl flex-col overflow-y-auto border-l border-black/10 bg-white shadow-panel">
+        <div className="sticky top-0 flex items-center justify-between border-b border-black/10 bg-white p-5">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-normal text-coral">Conheca a Plataforma</p>
+            <h2 className="mt-1 text-2xl font-semibold">Help Center</h2>
+          </div>
+          <button className="flex h-10 w-10 items-center justify-center rounded-md border border-black/10 hover:bg-black/5" onClick={onClose} aria-label="Fechar ajuda" title="Fechar ajuda">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="space-y-5 p-5">
+          <section className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
+            <h3 className="font-semibold">Objetivo</h3>
+            <p className="mt-2 text-sm leading-6 text-graphite">
+              Transformar sinais operacionais, eventos e feedbacks em inteligencia preditiva para antecipar riscos e sugerir acoes.
+            </p>
+          </section>
+
+          <section className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
+            <h3 className="font-semibold">Fluxo</h3>
+            <div className="mt-4 space-y-2 text-center text-sm font-medium text-graphite">
+              {['Eventos', 'Sinais', 'Score', 'Risco', 'Prioridade', 'Explicacao', 'Alerta', 'Plano de acao'].map((item, index, items) => (
+                <div key={item}>
+                  <div className="rounded-md border border-black/10 bg-white px-4 py-2">{item}</div>
+                  {index < items.length - 1 && <div className="py-1 text-moss">↓</div>}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="font-semibold">Guia dos menus</h3>
+              <button className="rounded-md bg-ink px-3 py-2 text-sm font-semibold text-white" onClick={onStartTour}>
+                Fazer Tour
+              </button>
+            </div>
+            <div className="mt-4 grid gap-3">
+              {navigation.map((item) => {
+                const Icon = item.icon;
+                const help = menuHelp[item.id];
+                return (
+                  <article key={item.id} className="rounded-md border border-black/10 bg-white p-3">
+                    <div className="flex items-center gap-2 font-semibold">
+                      <Icon size={16} />
+                      {item.label}
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-graphite">Objetivo: {help.objetivo}</p>
+                    <p className="text-sm leading-6 text-moss">Pergunta: "{help.pergunta}"</p>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function TourOverlay({ step, index, onNext, onClose }) {
+  return (
+    <div className="fixed bottom-5 right-5 z-50 w-[calc(100%-2.5rem)] max-w-sm rounded-md border border-black/10 bg-white p-5 shadow-panel">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-coral">Tour {index + 1} de {tourSteps.length}</p>
+          <h3 className="mt-1 text-lg font-semibold">{step.title}</h3>
+        </div>
+        <button className="flex h-8 w-8 items-center justify-center rounded-md border border-black/10 hover:bg-black/5" onClick={onClose} aria-label="Encerrar tour" title="Encerrar tour">
+          <X size={16} />
+        </button>
+      </div>
+      <p className="mt-3 text-sm leading-6 text-graphite">{step.text}</p>
+      <div className="mt-4 flex justify-end gap-2">
+        <button className="h-10 rounded-md border border-black/10 px-3 text-sm font-medium text-graphite hover:bg-black/5" onClick={onClose}>
+          Encerrar
+        </button>
+        <button className="h-10 rounded-md bg-ink px-3 text-sm font-semibold text-white" onClick={onNext}>
+          {index === tourSteps.length - 1 ? 'Concluir' : 'Proximo'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function InfoBlock({ title, text }) {
   return (
     <div className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
@@ -874,7 +1085,17 @@ function SectionTitle({ icon: Icon, title }) {
         <Icon size={18} />
       </div>
       <h2 className="text-lg font-semibold">{title}</h2>
+      <TooltipIcon text={widgetHelp[title]} />
     </div>
+  );
+}
+
+function TooltipIcon({ text }) {
+  if (!text) return null;
+  return (
+    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full text-moss" title={text} aria-label={text}>
+      <Info size={15} />
+    </span>
   );
 }
 
