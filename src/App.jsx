@@ -24,6 +24,7 @@ import {
   Search,
   ShieldAlert,
   Sparkles,
+  ClipboardList,
   UserRound,
   UsersRound,
 } from 'lucide-react';
@@ -37,6 +38,7 @@ const navigation = [
   { id: 'sinais', label: 'Sinais', icon: RadioTower },
   { id: 'insights', label: 'Insights', icon: Lightbulb },
   { id: 'alertas', label: 'Alertas', icon: BellRing },
+  { id: 'planos', label: 'Planos de Acao', icon: ClipboardList },
   { id: 'auditoria', label: 'Auditoria', icon: History },
 ];
 
@@ -272,6 +274,62 @@ const alertSummary = {
   alta: alerts.filter((alert) => alert.criticidade === 'alta').length,
 };
 
+function getUniqueSteps(steps) {
+  return [...new Set(steps)];
+}
+
+function getPlanPriority(account) {
+  if (account.priority <= 1 || account.risk === 'Critico') return 'Alta';
+  if (account.priority === 2 || account.risk === 'Alto') return 'Alta';
+  if (account.priority === 3 || account.risk === 'Medio') return 'Media';
+  return 'Baixa';
+}
+
+function estimateRiskReduction(account, planAlerts) {
+  const signalCount = Object.values(account.signals).filter(Boolean).length;
+  return Math.min(45, 15 + signalCount * 6 + planAlerts.length * 2);
+}
+
+function generateActionPlan(account) {
+  const accountAlerts = alerts.filter((alert) => alert.conta === account.name);
+  const negativeFeedbacks = feedbackSignals.filter((signal) => signal.conta === account.name && signal.sentimento === 'negativo');
+  const steps = [];
+
+  if (account.signals.onboardingSemConclusao) {
+    steps.push('revisar etapas pendentes', 'acompanhar conclusao', 'validar usuarios criados');
+  }
+
+  if (account.signals.acessoNegado) {
+    steps.push('revisar permissoes', 'validar perfis', 'verificar regras de acesso');
+  }
+
+  if (negativeFeedbacks.length > 0) {
+    steps.push('revisar feedback', 'identificar tema recorrente', 'validar experiencia do usuario');
+  }
+
+  if (account.signals.multiplosEventos) {
+    steps.push('revisar sequencia operacional', 'verificar dependencias');
+  }
+
+  return {
+    conta: account.name,
+    risco: account.risk,
+    score: account.score,
+    objetivo: account.score > 50 ? 'Reduzir risco operacional' : 'Manter monitoramento preventivo',
+    acoes: getUniqueSteps(steps.length > 0 ? steps : ['manter acompanhamento preventivo']),
+    impacto: estimateRiskReduction(account, accountAlerts),
+    prioridade: getPlanPriority(account),
+    alertasRelacionados: accountAlerts.length,
+    acaoSugerida: account.acaoSugerida,
+  };
+}
+
+const actionPlans = priorityAccounts.map(generateActionPlan);
+const actionPlanSummary = {
+  total: actionPlans.length,
+  alta: actionPlans.filter((plan) => plan.prioridade === 'Alta').length,
+};
+
 const users = [
   { name: 'Marina Costa', account: 'Conta Gestora A', role: 'Admin', score: 65, status: 'Critico', signal: 'Acesso negado apos onboarding iniciado' },
   { name: 'Bruno Lima', account: 'Conta Gestora B', role: 'Operador', score: 20, status: 'Estavel', signal: 'Usuario criado com feedback positivo' },
@@ -408,6 +466,20 @@ const audit = [
     time: `Hoje, 09:${String(50 + index).padStart(2, '0')}`,
     status: 'Concluido',
   })),
+  ...actionPlans.map((plan, index) => ({
+    event: `Plano criado para ${plan.conta}`,
+    owner: 'Motor de planos de acao',
+    time: `Hoje, 10:${String(index).padStart(2, '0')}`,
+    status: 'Concluido',
+  })),
+  ...actionPlans.slice(0, 3).map((plan, index) => ({
+    event: `Acao adicionada ao plano de ${plan.conta}: ${plan.acoes[0]}`,
+    owner: 'Motor de planos de acao',
+    time: `Hoje, 10:${String(5 + index).padStart(2, '0')}`,
+    status: 'Concluido',
+  })),
+  { event: 'Plano atualizado para Conta Gestora A: prioridade alta', owner: 'Motor de planos de acao', time: 'Hoje, 10:12', status: 'Concluido' },
+  { event: 'Plano concluido para Conta Gestora B: monitoramento preventivo', owner: 'Motor de planos de acao', time: 'Hoje, 10:18', status: 'Concluido' },
   { event: 'Alerta atualizado para Conta Gestora A: criticidade alta', owner: 'Motor de alertas proativos', time: 'Hoje, 09:55', status: 'Concluido' },
   { event: 'Alerta encerrado para Conta Gestora B: monitoramento preventivo', owner: 'Motor de alertas proativos', time: 'Hoje, 09:58', status: 'Concluido' },
   { event: 'Insight gerado para comportamento fora do padrao', owner: 'Analise preditiva', time: 'Hoje, 09:31', status: 'Concluido' },
@@ -456,6 +528,13 @@ const metrics = [
     detail: `${alertSummary.critica} criticos, ${alertSummary.alta} altos`,
     icon: BellRing,
     tone: 'text-coral bg-red-50',
+  },
+  {
+    label: 'planos ativos',
+    value: actionPlanSummary.total,
+    detail: `${actionPlanSummary.alta} alta prioridade`,
+    icon: ClipboardList,
+    tone: 'text-amber bg-yellow-50',
   },
 ];
 
@@ -577,6 +656,7 @@ function App() {
           {activePage === 'sinais' && <Signals />}
           {activePage === 'insights' && <Insights />}
           {activePage === 'alertas' && <Alerts />}
+          {activePage === 'planos' && <ActionPlans />}
           {activePage === 'auditoria' && <Audit />}
         </div>
       </main>
@@ -935,6 +1015,61 @@ function Alerts() {
             </article>
           );
         })}
+      </div>
+    </PagePanel>
+  );
+}
+
+function ActionPlans() {
+  return (
+    <PagePanel title="Planos de Acao inteligentes" icon={ClipboardList}>
+      <div className="grid gap-4 xl:grid-cols-2">
+        {actionPlans.map((plan) => (
+          <article key={plan.conta} className="rounded-md border border-black/10 bg-[#f9faf7] p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white text-moss ring-1 ring-black/10">
+                  <ClipboardList size={19} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">{plan.conta}</h3>
+                  <p className="mt-1 text-sm text-moss">Score {plan.score} · risco {plan.risco}</p>
+                </div>
+              </div>
+              <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ${statusTone(plan.prioridade)}`}>{plan.prioridade}</span>
+            </div>
+
+            <div className="mt-5 rounded-md border border-black/10 bg-white p-4">
+              <p className="text-sm font-semibold">Objetivo do plano</p>
+              <p className="mt-2 text-sm leading-6 text-graphite">{plan.objetivo}</p>
+            </div>
+
+            <div className="mt-5 rounded-md border border-black/10 bg-white p-4">
+              <p className="text-sm font-semibold">Lista de acoes</p>
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-graphite">
+                {plan.acoes.map((step) => (
+                  <li key={step} className="flex gap-2">
+                    <CheckCircle2 className="mt-0.5 shrink-0 text-moss" size={16} />
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-md border border-black/10 bg-white p-4">
+                <p className="text-sm font-semibold">Impacto esperado</p>
+                <p className="mt-2 text-2xl font-semibold">↓ {plan.impacto}%</p>
+                <p className="mt-1 text-sm text-moss">reducao estimada</p>
+              </div>
+              <div className="rounded-md border border-black/10 bg-white p-4">
+                <p className="text-sm font-semibold">Prioridade</p>
+                <p className="mt-2 text-2xl font-semibold">{plan.prioridade}</p>
+                <p className="mt-1 text-sm text-moss">{plan.alertasRelacionados} alertas relacionados</p>
+              </div>
+            </div>
+          </article>
+        ))}
       </div>
     </PagePanel>
   );
