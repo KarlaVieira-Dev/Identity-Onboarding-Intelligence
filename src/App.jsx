@@ -59,6 +59,13 @@ const explanationLabels = {
   multiplosEventos: 'multiplos eventos simultaneos',
 };
 
+const basePriorityByRisk = {
+  Critico: 1,
+  Alto: 2,
+  Medio: 3,
+  Baixo: 4,
+};
+
 const accountMetadata = {
   'Conta Gestora A': { segment: 'Fintech', users: 128, friction: 'Acesso e credenciais' },
   'Conta Gestora B': { segment: 'Saude', users: 84, friction: 'Cadastro inicial' },
@@ -136,6 +143,24 @@ function explainSignal(key, accountName) {
   return `${label} (+${scoreWeights[key]})`;
 }
 
+function getPriorityBoosts(signals) {
+  return [
+    signals.feedbackNegativo && 'feedback negativo',
+    signals.acessoNegado && 'acesso negado',
+    signals.onboardingSemConclusao && 'onboarding incompleto',
+  ].filter(Boolean);
+}
+
+function calculatePriority(account) {
+  const boosts = getPriorityBoosts(account.signals);
+  const basePriority = basePriorityByRisk[account.risk];
+  return {
+    priority: Math.max(1, basePriority - boosts.length),
+    priorityBase: basePriority,
+    priorityBoosts: boosts,
+  };
+}
+
 function buildAccountScore(input) {
   const activeSignals = Object.entries(input.signals)
     .filter(([, enabled]) => enabled)
@@ -149,11 +174,13 @@ function buildAccountScore(input) {
   const motivos = activeSignals.map((key) => explainSignal(key, input.name));
   const account = { ...input, score, risk, nivel: risk, reasons, motivos };
   const acaoSugerida = suggestAction(account);
-  return { ...account, action: acaoSugerida, acaoSugerida };
+  return { ...account, ...calculatePriority(account), action: acaoSugerida, acaoSugerida };
 }
 
 const accounts = accountInputs.map(buildAccountScore);
 const rankedAccounts = [...accounts].sort((a, b) => b.score - a.score);
+const priorityAccounts = [...accounts].sort((a, b) => a.priority - b.priority || b.score - a.score || a.name.localeCompare(b.name));
+const topPriorityAccounts = priorityAccounts.slice(0, 3);
 
 const users = [
   { name: 'Marina Costa', account: 'Conta Gestora A', role: 'Admin', score: 65, status: 'Critico', signal: 'Acesso negado apos onboarding iniciado' },
@@ -204,6 +231,9 @@ const signalGroups = [
 ];
 
 const insights = [
+  ...priorityAccounts
+    .filter((account) => account.priority <= 2 && account.priorityBoosts.length > 0)
+    .map((account) => `${account.name} deve ser priorizada por combinar ${account.priorityBoosts.join(', ')}.`),
   ...rankedAccounts
     .filter((account) => account.signals.onboardingSemConclusao && account.signals.acessoNegado)
     .map((account) => `${account.name}: Conta com onboarding incompleto e aumento de acessos negados.`),
@@ -240,6 +270,24 @@ const audit = [
     event: `Acao sugerida gerada para ${account.name}`,
     owner: 'Motor de recomendacao local',
     time: `Hoje, 09:${String(25 + index).padStart(2, '0')}`,
+    status: 'Concluido',
+  })),
+  ...priorityAccounts.map((account, index) => ({
+    event: `Prioridade calculada para ${account.name}: P${account.priority}`,
+    owner: 'Priorizacao automatica',
+    time: `Hoje, 09:${String(35 + index).padStart(2, '0')}`,
+    status: 'Concluido',
+  })),
+  ...topPriorityAccounts.map((account, index) => ({
+    event: `Item priorizado #${index + 1}: ${account.name}`,
+    owner: 'Ranking automatico',
+    time: `Hoje, 09:${String(40 + index).padStart(2, '0')}`,
+    status: 'Concluido',
+  })),
+  ...topPriorityAccounts.map((account, index) => ({
+    event: `Acao recomendada para ${account.name}: ${account.acaoSugerida}`,
+    owner: 'Motor de recomendacao local',
+    time: `Hoje, 09:${String(45 + index).padStart(2, '0')}`,
     status: 'Concluido',
   })),
   { event: 'Insight gerado para comportamento fora do padrao', owner: 'Analise preditiva', time: 'Hoje, 09:31', status: 'Concluido' },
@@ -426,7 +474,7 @@ function Dashboard() {
             <BellRing size={18} />
             <span className="text-sm font-semibold">Prioridade do dia</span>
           </div>
-          <p className="mt-5 text-4xl font-semibold">{rankedAccounts.filter((account) => ['Medio', 'Alto', 'Critico'].includes(account.risk)).length}</p>
+          <p className="mt-5 text-4xl font-semibold">{topPriorityAccounts.length}</p>
           <p className="mt-2 text-sm text-white/75">contas exigem intervencao por combinacao de score elevado, friccao e sinais recorrentes.</p>
           <button className="mt-6 h-10 rounded-md bg-mint px-4 text-sm font-semibold text-ink">Revisar riscos</button>
         </div>
@@ -448,6 +496,39 @@ function Dashboard() {
             </div>
           );
         })}
+      </section>
+
+      <section className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
+        <SectionTitle icon={ShieldAlert} title="Prioridades automaticas" />
+        <div className="mt-5 grid gap-4 xl:grid-cols-3">
+          {topPriorityAccounts.map((account, index) => (
+            <article key={account.name} className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-coral">#{index + 1} no ranking</p>
+                  <h3 className="mt-2 text-lg font-semibold">{account.name}</h3>
+                </div>
+                <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ${statusTone(account.nivel)}`}>{account.nivel}</span>
+              </div>
+              <div className="mt-4 flex items-center gap-3">
+                <div className="rounded-md border border-black/10 bg-white px-3 py-2">
+                  <p className="text-xs text-moss">Prioridade</p>
+                  <p className="text-xl font-semibold">P{account.priority}</p>
+                </div>
+                <div className="rounded-md border border-black/10 bg-white px-3 py-2">
+                  <p className="text-xs text-moss">Score</p>
+                  <p className="text-xl font-semibold">{account.score}</p>
+                </div>
+              </div>
+              <ul className="mt-4 list-disc space-y-2 pl-5 text-sm leading-6 text-graphite">
+                {account.motivos.slice(0, 3).map((motivo) => (
+                  <li key={motivo}>{motivo}</li>
+                ))}
+              </ul>
+              <p className="mt-4 rounded-md border border-black/10 bg-white p-3 text-sm leading-6 text-graphite">"{account.acaoSugerida}"</p>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
@@ -595,12 +676,13 @@ function Journeys() {
 
 function Risks() {
   return (
-    <PagePanel title="Ranking de contas por score" icon={ShieldAlert}>
+    <PagePanel title="Ranking de contas por prioridade" icon={ShieldAlert}>
       <div className="grid gap-4 xl:grid-cols-2">
-        {rankedAccounts.map((account) => (
+        {priorityAccounts.map((account, index) => (
           <article key={account.name} className="rounded-md border border-black/10 bg-[#f9faf7] p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
+                <p className="text-sm font-semibold text-coral">#{index + 1} prioridade P{account.priority}</p>
                 <h3 className="text-lg font-semibold">{account.name}</h3>
                 <p className="mt-1 text-sm text-moss">{account.segment}</p>
               </div>
