@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { feedbackSignals, onboardingEvents } from './data/ecosystemData.js';
 import {
   Activity,
   AlertTriangle,
@@ -38,86 +39,67 @@ const navigation = [
 ];
 
 const scoreWeights = {
-  onboardingIncompleto: 25,
-  acessosNegadosRecorrentes: 20,
-  feedbackNegativoRecorrente: 15,
-  baixaUtilizacao: 10,
-  alteracoesFrequentesPerfil: 15,
+  onboardingSemConclusao: 20,
+  acessoNegado: 15,
+  feedbackNegativo: 15,
+  multiplosEventos: 10,
 };
 
 const signalLabels = {
-  onboardingIncompleto: 'onboarding incompleto',
-  acessosNegadosRecorrentes: 'acessos negados recorrentes',
-  feedbackNegativoRecorrente: 'feedback negativo recorrente',
-  baixaUtilizacao: 'baixa utilizacao',
-  alteracoesFrequentesPerfil: 'alteracoes frequentes de perfil',
+  onboardingSemConclusao: 'onboarding iniciado sem conclusao',
+  acessoNegado: 'acesso negado',
+  feedbackNegativo: 'feedback negativo',
+  multiplosEventos: 'multiplos eventos',
 };
 
-const accountInputs = [
+const accountMetadata = {
+  'Conta Gestora A': { segment: 'Fintech', users: 128, friction: 'Acesso e credenciais' },
+  'Conta Gestora B': { segment: 'Saude', users: 84, friction: 'Cadastro inicial' },
+  'Conta Gestora C': { segment: 'SaaS', users: 49, friction: 'Validacao operacional' },
+};
+
+const impactedAccounts = [...new Set([...onboardingEvents.map((event) => event.conta), ...feedbackSignals.map((signal) => signal.conta)])];
+
+function getAccountEcosystemSignals(conta) {
+  const events = onboardingEvents.filter((event) => event.conta === conta);
+  const feedbacks = feedbackSignals.filter((signal) => signal.conta === conta);
+  const eventTypes = events.map((event) => event.evento);
+
+  return {
+    onboardingSemConclusao: eventTypes.includes('onboarding_iniciado') && !eventTypes.includes('onboarding_concluido'),
+    acessoNegado: eventTypes.includes('acesso_negado'),
+    feedbackNegativo: feedbacks.some((signal) => signal.sentimento === 'negativo'),
+    multiplosEventos: events.length > 1,
+  };
+}
+
+const accountInputs = impactedAccounts.map((conta) => ({
+  name: conta,
+  ...(accountMetadata[conta] || { segment: 'Conta B2B', users: 0, friction: 'Sinais do ecossistema' }),
+  signals: getAccountEcosystemSignals(conta),
+}));
+
+const ecosystemSummary = [
   {
-    name: 'Atlas Pay',
-    segment: 'Fintech',
-    users: 128,
-    friction: 'KYC empresarial',
-    signals: {
-      onboardingIncompleto: true,
-      acessosNegadosRecorrentes: true,
-      feedbackNegativoRecorrente: true,
-      baixaUtilizacao: false,
-      alteracoesFrequentesPerfil: true,
-    },
+    label: 'Eventos operacionais recebidos',
+    value: onboardingEvents.length,
+    detail: 'Account Onboarding & Access Governance',
+    icon: RadioTower,
+    tone: 'text-sky bg-blue-50',
   },
   {
-    name: 'Nexa Health',
-    segment: 'Saude',
-    users: 84,
-    friction: 'Consentimento LGPD',
-    signals: {
-      onboardingIncompleto: true,
-      acessosNegadosRecorrentes: false,
-      feedbackNegativoRecorrente: true,
-      baixaUtilizacao: true,
-      alteracoesFrequentesPerfil: false,
-    },
+    label: 'Feedbacks recebidos',
+    value: feedbackSignals.length,
+    detail: 'AI Feedback Intelligence',
+    icon: Lightbulb,
+    tone: 'text-coral bg-red-50',
   },
   {
-    name: 'Volt Market',
-    segment: 'Marketplace',
-    users: 211,
-    friction: 'Revisao documental',
-    signals: {
-      onboardingIncompleto: false,
-      acessosNegadosRecorrentes: false,
-      feedbackNegativoRecorrente: false,
-      baixaUtilizacao: true,
-      alteracoesFrequentesPerfil: false,
-    },
-  },
-  {
-    name: 'Terra Cloud',
-    segment: 'SaaS',
-    users: 49,
-    friction: 'Convites pendentes',
-    signals: {
-      onboardingIncompleto: true,
-      acessosNegadosRecorrentes: true,
-      feedbackNegativoRecorrente: false,
-      baixaUtilizacao: true,
-      alteracoesFrequentesPerfil: true,
-    },
-  },
-  {
-    name: 'Orion Bank',
-    segment: 'Banco digital',
-    users: 176,
-    friction: 'Validacao de perfil',
-    signals: {
-      onboardingIncompleto: false,
-      acessosNegadosRecorrentes: true,
-      feedbackNegativoRecorrente: true,
-      baixaUtilizacao: false,
-      alteracoesFrequentesPerfil: true,
-    },
+    label: 'Contas impactadas',
+    value: impactedAccounts.length,
+    detail: 'identificadas na camada local',
+    icon: Layers3,
+    tone: 'text-moss bg-emerald-50',
   },
 ];
 
@@ -131,9 +113,9 @@ function classifyScore(score) {
 function suggestAction(account) {
   const { signals, risk } = account;
   if (risk === 'Critico') return 'Abrir intervencao executiva e revisar identidade da conta';
-  if (signals.onboardingIncompleto && signals.acessosNegadosRecorrentes) return 'Acionar onboarding assistido e validar bloqueios de acesso';
-  if (signals.feedbackNegativoRecorrente) return 'Agrupar feedbacks e priorizar correcao da etapa reportada';
-  if (signals.baixaUtilizacao) return 'Enviar playbook de ativacao e monitorar uso por 48h';
+  if (signals.onboardingSemConclusao && signals.acessoNegado) return 'Acionar onboarding assistido e validar bloqueios de acesso';
+  if (signals.feedbackNegativo) return 'Agrupar feedbacks e priorizar correcao da etapa reportada';
+  if (signals.multiplosEventos) return 'Revisar sequencia operacional e orientar proxima etapa';
   return 'Manter monitoramento preventivo';
 }
 
@@ -155,11 +137,9 @@ const accounts = accountInputs.map(buildAccountScore);
 const rankedAccounts = [...accounts].sort((a, b) => b.score - a.score);
 
 const users = [
-  { name: 'Marina Costa', account: 'Atlas Pay', role: 'Admin', score: 86, status: 'Critico', signal: '3 tentativas falhas de validacao' },
-  { name: 'Bruno Lima', account: 'Nexa Health', role: 'Operador', score: 58, status: 'Atencao', signal: 'Tempo alto na etapa de aceite' },
-  { name: 'Camila Torres', account: 'Volt Market', role: 'Analista', score: 18, status: 'Estavel', signal: 'Atividade consistente' },
-  { name: 'Renan Alves', account: 'Terra Cloud', role: 'Gestor', score: 73, status: 'Critico', signal: 'Convite reenviado 2 vezes' },
-  { name: 'Paula Rocha', account: 'Orion Bank', role: 'Admin', score: 67, status: 'Atencao', signal: 'Alteracoes de perfil em sequencia' },
+  { name: 'Marina Costa', account: 'Conta Gestora A', role: 'Admin', score: 65, status: 'Critico', signal: 'Acesso negado apos onboarding iniciado' },
+  { name: 'Bruno Lima', account: 'Conta Gestora B', role: 'Operador', score: 20, status: 'Estavel', signal: 'Usuario criado com feedback positivo' },
+  { name: 'Renan Alves', account: 'Conta Gestora C', role: 'Gestor', score: 60, status: 'Atencao', signal: 'Eventos operacionais em sequencia' },
 ];
 
 const journeys = [
@@ -172,37 +152,41 @@ const journeys = [
 const signalGroups = [
   {
     group: 'onboarding',
-    items: [
-      { signal: 'onboarding incompleto', account: 'Atlas Pay, Nexa Health, Terra Cloud', volume: 3, severity: 'Alta' },
-      { signal: 'cadastro parado na validacao', account: 'Atlas Pay', volume: 11, severity: 'Alta' },
-    ],
+    items: onboardingEvents
+      .filter((event) => event.evento.includes('onboarding') || event.evento === 'usuario_criado')
+      .map((event) => ({ signal: event.evento, account: event.conta, volume: 1, severity: event.evento === 'onboarding_iniciado' ? 'Media' : 'Baixa' })),
   },
   {
     group: 'operacao',
-    items: [
-      { signal: 'acessos negados recorrentes', account: 'Atlas Pay, Terra Cloud, Orion Bank', volume: 18, severity: 'Alta' },
-      { signal: 'baixa utilizacao', account: 'Nexa Health, Volt Market, Terra Cloud', volume: 23, severity: 'Media' },
-    ],
+    items: onboardingEvents
+      .filter((event) => ['acesso_negado', 'perfil_alterado'].includes(event.evento))
+      .map((event) => ({ signal: event.evento, account: event.conta, volume: 1, severity: event.evento === 'acesso_negado' ? 'Alta' : 'Media' })),
   },
   {
     group: 'feedback',
-    items: [
-      { signal: 'feedback negativo recorrente', account: 'Atlas Pay, Nexa Health, Orion Bank', volume: 16, severity: 'Alta' },
-      { signal: 'comentarios sobre documento social', account: 'Nexa Health', volume: 7, severity: 'Media' },
-    ],
+    items: feedbackSignals.map((signal) => ({
+      signal: `${signal.sentimento} - ${signal.tema}`,
+      account: signal.conta,
+      volume: 1,
+      severity: signal.sentimento === 'negativo' ? 'Alta' : 'Baixa',
+    })),
   },
   {
     group: 'comportamento',
-    items: [
-      { signal: 'alteracoes frequentes de perfil', account: 'Atlas Pay, Terra Cloud, Orion Bank', volume: 14, severity: 'Alta' },
-      { signal: 'usuario fora do padrao', account: 'Orion Bank', volume: 5, severity: 'Media' },
-    ],
+    items: impactedAccounts
+      .filter((conta) => onboardingEvents.filter((event) => event.conta === conta).length > 1)
+      .map((conta) => ({
+        signal: 'multiplos eventos operacionais',
+        account: conta,
+        volume: onboardingEvents.filter((event) => event.conta === conta).length,
+        severity: 'Media',
+      })),
   },
 ];
 
 const insights = [
   ...rankedAccounts
-    .filter((account) => account.signals.onboardingIncompleto && account.signals.acessosNegadosRecorrentes)
+    .filter((account) => account.signals.onboardingSemConclusao && account.signals.acessoNegado)
     .map((account) => `${account.name}: Conta com onboarding incompleto e aumento de acessos negados.`),
   ...users
     .filter((user) => user.score >= 61)
@@ -234,8 +218,8 @@ const audit = [
 const metrics = [
   {
     label: 'contas em risco',
-    value: accounts.filter((account) => ['Alto', 'Critico'].includes(account.risk)).length,
-    detail: `${accounts.filter((account) => account.risk === 'Critico').length} em risco critico`,
+    value: accounts.filter((account) => ['Medio', 'Alto', 'Critico'].includes(account.risk)).length,
+    detail: 'score acima de 30 pontos',
     icon: AlertTriangle,
     tone: 'text-coral bg-red-50',
   },
@@ -273,8 +257,8 @@ const flowSteps = [
 
 const appliedRules = [
   { title: 'classificacao por score', description: '0 a 30 baixo; 31 a 60 medio; 61 a 80 alto; 81 a 100 critico.' },
-  { title: 'sinais comportamentais', description: 'Acessos negados, baixa utilizacao, mudancas de perfil e abandono de etapa elevam prioridade.' },
-  { title: 'feedbacks recorrentes', description: 'Termos repetidos em feedbacks simulados agrupam gargalos por tema e por conta.' },
+  { title: 'sinais comportamentais', description: 'Onboarding iniciado sem conclusao, acessos negados e multiplos eventos elevam prioridade.' },
+  { title: 'feedbacks recorrentes', description: 'Feedbacks negativos importados do ecossistema agrupam gargalos por tema e por conta.' },
   { title: 'alertas proativos', description: 'Alertas sao gerados quando a combinacao de score, jornada e sinal indica acao imediata.' },
 ];
 
@@ -426,6 +410,27 @@ function Dashboard() {
             </div>
           );
         })}
+      </section>
+
+      <section className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
+        <SectionTitle icon={RadioTower} title="Dados recebidos do Ecossistema" />
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
+          {ecosystemSummary.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.label} className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-moss">{item.label}</span>
+                  <span className={`flex h-10 w-10 items-center justify-center rounded-md ${item.tone}`}>
+                    <Icon size={19} />
+                  </span>
+                </div>
+                <p className="mt-4 text-3xl font-semibold">{item.value}</p>
+                <p className="mt-1 text-sm text-moss">{item.detail}</p>
+              </div>
+            );
+          })}
+        </div>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
