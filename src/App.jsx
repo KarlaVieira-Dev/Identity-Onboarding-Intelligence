@@ -1205,7 +1205,8 @@ function ExecutiveDashboard() {
       </section>
 
       <section className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
-        <SectionTitle icon={Gauge} title="Contexto Geral" />
+        <SectionTitle icon={LineChart} title="Prioridades e Contexto" />
+        <p className="mt-5 text-sm font-semibold text-moss">Resumo executivo</p>
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {contextMetrics.map((metric) => {
             const Icon = metric.icon;
@@ -1223,6 +1224,36 @@ function ExecutiveDashboard() {
             );
           })}
         </div>
+
+        <p className="mt-6 text-sm font-semibold text-moss">Ranking de prioridades</p>
+        <div className="mt-5 overflow-hidden rounded-md border border-black/10">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-black/10">
+              <thead className="bg-[#f9faf7]">
+                <tr>
+                  {['Posicao', 'Conta', 'Risco', 'Score', 'Acao sugerida'].map((column) => (
+                    <th key={column} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-moss">
+                      {column}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-black/10 bg-white">
+                {topPriorityAccounts.map((account, index) => (
+                  <tr key={account.name} className="hover:bg-[#fbfcf8]">
+                    <td className="px-4 py-4 text-sm font-semibold text-coral">#{index + 1}</td>
+                    <td className="px-4 py-4 text-sm font-medium text-graphite">{account.name}</td>
+                    <td className="px-4 py-4 text-sm">
+                      <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ${statusTone(account.nivel)}`}>{account.nivel}</span>
+                    </td>
+                    <td className="px-4 py-4 text-sm text-graphite">{account.score}</td>
+                    <td className="max-w-md px-4 py-4 text-sm leading-6 text-graphite">{account.acaoSugerida}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </section>
 
       <section className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
@@ -1234,36 +1265,6 @@ function ExecutiveDashboard() {
               <p className="mt-2 text-sm leading-6 text-graphite">{insight}</p>
             </article>
           ))}
-        </div>
-      </section>
-
-      <section className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
-        <SectionTitle icon={ShieldAlert} title="Prioridades automaticas" />
-        <div className="mt-5 overflow-hidden rounded-md border border-black/10">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-black/10">
-              <thead className="bg-[#f9faf7]">
-                <tr>
-                  {['Conta', 'Risco', 'Score'].map((column) => (
-                    <th key={column} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-moss">
-                      {column}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-black/10 bg-white">
-                {topPriorityAccounts.map((account) => (
-                  <tr key={account.name} className="hover:bg-[#fbfcf8]">
-                    <td className="px-4 py-4 text-sm font-medium text-graphite">{account.name}</td>
-                    <td className="px-4 py-4 text-sm">
-                      <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ${statusTone(account.nivel)}`}>{account.nivel}</span>
-                    </td>
-                    <td className="px-4 py-4 text-sm text-graphite">{account.score}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </div>
       </section>
     </div>
