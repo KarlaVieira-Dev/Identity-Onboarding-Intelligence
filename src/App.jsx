@@ -1129,17 +1129,58 @@ function Dashboard() {
 }
 
 function ExecutiveDashboard() {
+  const contextMetrics = [
+    {
+      label: 'Contas em risco',
+      value: accounts.filter((account) => ['Medio', 'Alto', 'Critico'].includes(account.risk)).length,
+      detail: 'precisam de acompanhamento',
+      icon: AlertTriangle,
+      tone: 'text-coral bg-red-50',
+    },
+    {
+      label: 'Score medio',
+      value: Math.round(accounts.reduce((total, account) => total + account.score, 0) / accounts.length),
+      detail: 'calculado pelas contas',
+      icon: Gauge,
+      tone: 'text-sky bg-blue-50',
+    },
+    {
+      label: 'Alertas ativos',
+      value: alertSummary.total,
+      detail: `${alertSummary.critica} criticos, ${alertSummary.alta} altos`,
+      icon: BellRing,
+      tone: 'text-coral bg-red-50',
+    },
+    {
+      label: 'Planos ativos',
+      value: actionPlanSummary.total,
+      detail: `${actionPlanSummary.alta} alta prioridade`,
+      icon: ClipboardList,
+      tone: 'text-amber bg-yellow-50',
+    },
+  ];
+  const learningInsights = [
+    'onboarding incompleto e o sinal mais recorrente',
+    'acessos negados aumentam score',
+    'feedback negativo impacta contas em risco',
+  ];
+
   return (
     <div className="space-y-6">
-      <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-        <div className="rounded-md border border-black/10 bg-ink p-5 text-white shadow-panel">
-          <div className="flex items-center gap-2 text-mint">
-            <BellRing size={18} />
-            <span className="text-sm font-semibold">Prioridade do dia</span>
+      <section className="rounded-md border border-black/10 bg-ink p-5 text-white shadow-panel">
+        <div className="flex items-center gap-2 text-mint">
+          <ShieldAlert size={18} />
+          <span className="text-sm font-semibold">O que precisa de atencao agora?</span>
+        </div>
+        <div className="mt-5 grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
+          <div>
+            <p className="text-sm text-white/65">Conta prioritaria</p>
+            <h2 className="mt-2 text-3xl font-semibold">{executiveFocus.name}</h2>
+            <div className="mt-4 inline-flex rounded-md bg-white/10 px-3 py-2 text-sm font-semibold text-mint">
+              Risco: {executiveFocus.nivel}
+            </div>
           </div>
-          <h2 className="mt-5 text-3xl font-semibold">{executiveFocus.name}</h2>
-          <p className="mt-2 text-sm text-white/75">Conta com maior urgencia para acao operacional.</p>
-          <div className="mt-5 grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-md border border-white/10 bg-white/10 p-4">
               <p className="text-sm font-semibold text-mint">Motivos</p>
               <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-white/80">
@@ -1161,66 +1202,68 @@ function ExecutiveDashboard() {
             </div>
           </div>
         </div>
+      </section>
 
-        <div className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
-          <SectionTitle icon={Gauge} title="Indicadores rapidos" />
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            {metrics.slice(0, 4).map((metric) => {
-              const Icon = metric.icon;
-              return (
-                <div key={metric.label} className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm text-moss">{metric.label}</span>
-                    <span className={`flex h-9 w-9 items-center justify-center rounded-md ${metric.tone}`}>
-                      <Icon size={17} />
-                    </span>
-                  </div>
-                  <p className="mt-3 text-2xl font-semibold">{metric.value}</p>
-                  <p className="mt-1 text-xs text-moss">{metric.detail}</p>
+      <section className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
+        <SectionTitle icon={Gauge} title="Contexto Geral" />
+        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {contextMetrics.map((metric) => {
+            const Icon = metric.icon;
+            return (
+              <div key={metric.label} className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-moss">{metric.label}</span>
+                  <span className={`flex h-9 w-9 items-center justify-center rounded-md ${metric.tone}`}>
+                    <Icon size={17} />
+                  </span>
                 </div>
-              );
-            })}
-          </div>
+                <p className="mt-3 text-3xl font-semibold">{metric.value}</p>
+                <p className="mt-1 text-xs text-moss">{metric.detail}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
+        <SectionTitle icon={Brain} title="O que aprendemos?" />
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          {learningInsights.map((insight, index) => (
+            <article key={insight} className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
+              <p className="text-sm font-semibold text-coral">Insight {index + 1}</p>
+              <p className="mt-2 text-sm leading-6 text-graphite">{insight}</p>
+            </article>
+          ))}
         </div>
       </section>
 
       <section className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
         <SectionTitle icon={ShieldAlert} title="Prioridades automaticas" />
-        <div className="mt-5 grid gap-4 xl:grid-cols-3">
-          {topPriorityAccounts.map((account, index) => (
-            <article key={account.name} className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-coral">#{index + 1} no ranking</p>
-                  <h3 className="mt-2 text-lg font-semibold">{account.name}</h3>
-                </div>
-                <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ${statusTone(account.nivel)}`}>{account.nivel}</span>
-              </div>
-              <div className="mt-4 flex items-center gap-3">
-                <div className="rounded-md border border-black/10 bg-white px-3 py-2">
-                  <p className="text-xs text-moss">Prioridade</p>
-                  <p className="text-xl font-semibold">P{account.priority}</p>
-                </div>
-                <div className="rounded-md border border-black/10 bg-white px-3 py-2">
-                  <p className="text-xs text-moss">Score</p>
-                  <p className="text-xl font-semibold">{account.score}</p>
-                </div>
-              </div>
-              <p className="mt-4 rounded-md border border-black/10 bg-white p-3 text-sm leading-6 text-graphite">"{account.acaoSugerida}"</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
-        <SectionTitle icon={Brain} title="Insights automaticos" />
-        <div className="mt-5 grid gap-3 md:grid-cols-3">
-          {dashboardInsights.map((insight, index) => (
-            <article key={insight} className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
-              <p className="text-sm font-semibold text-coral">Insight {index + 1}</p>
-              <p className="mt-2 text-sm leading-6 text-graphite">"{insight}"</p>
-            </article>
-          ))}
+        <div className="mt-5 overflow-hidden rounded-md border border-black/10">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-black/10">
+              <thead className="bg-[#f9faf7]">
+                <tr>
+                  {['Conta', 'Risco', 'Score'].map((column) => (
+                    <th key={column} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-normal text-moss">
+                      {column}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-black/10 bg-white">
+                {topPriorityAccounts.map((account) => (
+                  <tr key={account.name} className="hover:bg-[#fbfcf8]">
+                    <td className="px-4 py-4 text-sm font-medium text-graphite">{account.name}</td>
+                    <td className="px-4 py-4 text-sm">
+                      <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ${statusTone(account.nivel)}`}>{account.nivel}</span>
+                    </td>
+                    <td className="px-4 py-4 text-sm text-graphite">{account.score}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
     </div>
