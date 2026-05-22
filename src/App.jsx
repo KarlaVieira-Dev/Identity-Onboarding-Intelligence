@@ -1207,7 +1207,7 @@ function ExecutiveDashboard() {
       <section className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
         <SectionTitle icon={LineChart} title="Prioridades e Contexto" />
         <p className="mt-5 text-sm font-semibold text-moss">Resumo executivo</p>
-        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-3 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {contextMetrics.map((metric) => {
             const Icon = metric.icon;
             return (
@@ -1225,8 +1225,13 @@ function ExecutiveDashboard() {
           })}
         </div>
 
-        <p className="mt-6 text-sm font-semibold text-moss">Ranking de prioridades</p>
-        <div className="mt-5 overflow-hidden rounded-md border border-black/10">
+        <div className="mt-4 flex items-start gap-2 rounded-md border border-black/10 bg-[#f9faf7] p-3 text-sm leading-6 text-graphite">
+          <Brain className="mt-0.5 shrink-0 text-moss" size={16} />
+          <p>As contas abaixo representam a priorizacao gerada automaticamente a partir dos indicadores e sinais analisados.</p>
+        </div>
+
+        <p className="mt-4 text-sm font-semibold text-moss">Ranking de prioridades</p>
+        <div className="mt-3 overflow-hidden rounded-md border border-black/10">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-black/10">
               <thead className="bg-[#f9faf7]">
