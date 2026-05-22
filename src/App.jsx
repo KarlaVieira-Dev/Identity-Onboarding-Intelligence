@@ -28,6 +28,7 @@ import {
   GraduationCap,
   HelpCircle,
   Info,
+  FlaskConical,
   X,
   UserRound,
   UsersRound,
@@ -43,6 +44,7 @@ const navigation = [
   { id: 'insights', label: 'Insights', icon: Lightbulb },
   { id: 'alertas', label: 'Alertas', icon: BellRing },
   { id: 'planos', label: 'Planos de Acao', icon: ClipboardList },
+  { id: 'simulacoes', label: 'Simulacoes', icon: FlaskConical },
   { id: 'auditoria', label: 'Auditoria', icon: History },
 ];
 
@@ -83,6 +85,10 @@ const menuHelp = {
     objetivo: 'Transformar risco em tarefas.',
     pergunta: 'O que preciso fazer?',
   },
+  simulacoes: {
+    objetivo: 'Testar cenarios e observar a resposta automatica.',
+    pergunta: 'Como a plataforma reage a um novo cenario?',
+  },
   auditoria: {
     objetivo: 'Exibir rastreabilidade.',
     pergunta: 'Como o sistema chegou nessa decisao?',
@@ -109,6 +115,7 @@ const widgetHelp = {
   'Sinais agrupados': 'Agrupa sinais por onboarding, operacao, feedback e comportamento para explicar o impacto no score.',
   'Alertas proativos': 'Lista notificacoes geradas quando sinais indicam risco crescente.',
   'Planos de Acao inteligentes': 'Converte alertas e riscos em passos praticos para resolucao.',
+  'Simulacoes Inteligentes': 'Permite testar cenarios locais e visualizar sinais, score, risco, alertas e plano de acao gerados automaticamente.',
   'Insights acionaveis': 'Resume analises geradas automaticamente para apoiar decisao.',
   'Resumo executivo': 'Sintetiza o estado operacional em frases curtas para leitura rapida.',
   'Trilha de auditoria': 'Registra como scores, alertas, prioridades e planos foram produzidos.',
@@ -410,6 +417,49 @@ const actionPlanSummary = {
   alta: actionPlans.filter((plan) => plan.prioridade === 'Alta').length,
 };
 
+const simulationScenarios = [
+  {
+    id: 'abandono-onboarding',
+    label: 'Abandono de onboarding',
+    signals: ['onboarding iniciado', 'feedback negativo', 'acessos negados'],
+    score: 75,
+    risk: 'Alto',
+    explanation: 'Conta apresenta onboarding incompleto combinado com feedback negativo.',
+    alert: 'acompanhamento necessario',
+    plan: ['revisar permissoes', 'acompanhar onboarding', 'revisar feedback'],
+  },
+  {
+    id: 'acessos-negados',
+    label: 'Excesso de acessos negados',
+    signals: ['acesso negado', 'acesso negado recorrente', 'multiplos eventos'],
+    score: 70,
+    risk: 'Alto',
+    explanation: 'Conta apresenta recorrencia de acessos negados com sinais operacionais simultaneos.',
+    alert: 'revisao de permissoes necessaria',
+    plan: ['revisar permissoes', 'validar perfis', 'verificar regras de acesso'],
+  },
+  {
+    id: 'feedback-negativo',
+    label: 'Feedback negativo recorrente',
+    signals: ['feedback negativo', 'tema recorrente', 'friccao operacional'],
+    score: 60,
+    risk: 'Medio',
+    explanation: 'Conta apresenta feedback negativo recorrente com potencial impacto na experiencia do usuario.',
+    alert: 'feedback recorrente identificado',
+    plan: ['revisar feedback', 'identificar tema recorrente', 'validar experiencia do usuario'],
+  },
+  {
+    id: 'baixa-utilizacao',
+    label: 'Baixa utilizacao',
+    signals: ['baixa utilizacao', 'poucos eventos', 'jornada sem progresso'],
+    score: 45,
+    risk: 'Medio',
+    explanation: 'Conta apresenta baixa utilizacao e pouca progressao operacional no onboarding.',
+    alert: 'engajamento abaixo do esperado',
+    plan: ['acompanhar conclusao', 'validar usuarios criados', 'revisar sequencia operacional'],
+  },
+];
+
 const users = [
   { name: 'Marina Costa', account: 'Conta Gestora A', role: 'Admin', score: 65, status: 'Critico', signal: 'Acesso negado apos onboarding iniciado' },
   { name: 'Bruno Lima', account: 'Conta Gestora B', role: 'Operador', score: 20, status: 'Estavel', signal: 'Usuario criado com feedback positivo' },
@@ -546,6 +596,8 @@ const audit = [
     time: `Hoje, 09:${String(50 + index).padStart(2, '0')}`,
     status: 'Concluido',
   })),
+  { event: 'Simulacao executada: Abandono de onboarding', owner: 'Motor de simulacoes local', time: 'Hoje, 10:22', status: 'Concluido' },
+  { event: 'Cenario selecionado: Excesso de acessos negados', owner: 'Motor de simulacoes local', time: 'Hoje, 10:24', status: 'Concluido' },
   ...actionPlans.map((plan, index) => ({
     event: `Plano criado para ${plan.conta}`,
     owner: 'Motor de planos de acao',
@@ -774,6 +826,7 @@ function App() {
           {activePage === 'insights' && <Insights />}
           {activePage === 'alertas' && <Alerts />}
           {activePage === 'planos' && <ActionPlans />}
+          {activePage === 'simulacoes' && <Simulations />}
           {activePage === 'auditoria' && <Audit />}
         </div>
       </main>
@@ -1291,6 +1344,93 @@ function ActionPlans() {
             </div>
           </article>
         ))}
+      </div>
+    </PagePanel>
+  );
+}
+
+function Simulations() {
+  const [selectedScenarioId, setSelectedScenarioId] = useState(simulationScenarios[0].id);
+  const scenario = simulationScenarios.find((item) => item.id === selectedScenarioId);
+
+  return (
+    <PagePanel title="Simulacoes Inteligentes" icon={FlaskConical}>
+      <div className="rounded-md border border-black/10 bg-[#f9faf7] p-5">
+        <p className="text-sm leading-6 text-graphite">Permite testar cenarios e visualizar como a plataforma reage.</p>
+      </div>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
+        <section className="rounded-md border border-black/10 bg-[#f9faf7] p-5">
+          <h3 className="font-semibold">Cenarios disponiveis</h3>
+          <div className="mt-4 space-y-2">
+            {simulationScenarios.map((item) => (
+              <label
+                key={item.id}
+                className={`flex cursor-pointer items-center gap-3 rounded-md border p-3 text-sm font-medium transition ${
+                  selectedScenarioId === item.id ? 'border-ink bg-white text-ink' : 'border-black/10 bg-white/70 text-graphite hover:bg-white'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="simulation-scenario"
+                  value={item.id}
+                  checked={selectedScenarioId === item.id}
+                  onChange={() => setSelectedScenarioId(item.id)}
+                  className="h-4 w-4 accent-ink"
+                />
+                {item.label}
+              </label>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-md border border-black/10 bg-[#f9faf7] p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-coral">Cenario selecionado</p>
+              <h3 className="mt-1 text-xl font-semibold">{scenario.label}</h3>
+            </div>
+            <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ${statusTone(scenario.risk)}`}>{scenario.risk}</span>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <div className="rounded-md border border-black/10 bg-white p-4">
+              <p className="text-sm font-semibold">Sinais recebidos</p>
+              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-graphite">
+                {scenario.signals.map((signal) => (
+                  <li key={signal}>{signal}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-md border border-black/10 bg-white p-4">
+              <p className="text-sm font-semibold">Score</p>
+              <p className="mt-2 text-4xl font-semibold">{scenario.score}</p>
+              <p className="mt-2 text-sm text-moss">Risco: {scenario.risk}</p>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-md border border-black/10 bg-white p-4">
+            <p className="text-sm font-semibold">Explicacao automatica</p>
+            <p className="mt-2 text-sm leading-6 text-graphite">"{scenario.explanation}"</p>
+          </div>
+
+          <div className="mt-5 rounded-md border border-black/10 bg-white p-4">
+            <p className="text-sm font-semibold">Alerta</p>
+            <p className="mt-2 text-sm leading-6 text-graphite">🚨 {scenario.alert}</p>
+          </div>
+
+          <div className="mt-5 rounded-md border border-black/10 bg-white p-4">
+            <p className="text-sm font-semibold">Plano de acao</p>
+            <ul className="mt-3 space-y-2 text-sm leading-6 text-graphite">
+              {scenario.plan.map((step) => (
+                <li key={step} className="flex gap-2">
+                  <CheckCircle2 className="mt-0.5 shrink-0 text-moss" size={16} />
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
       </div>
     </PagePanel>
   );
