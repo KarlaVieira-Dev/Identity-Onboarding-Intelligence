@@ -37,10 +37,8 @@ import {
 const navigation = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
   { id: 'contas', label: 'Contas', icon: Layers3 },
-  { id: 'usuarios', label: 'Usuarios', icon: UsersRound },
   { id: 'jornadas', label: 'Jornadas', icon: GitBranch },
   { id: 'riscos', label: 'Riscos', icon: ShieldAlert },
-  { id: 'sinais', label: 'Sinais', icon: RadioTower },
   { id: 'insights', label: 'Insights', icon: Lightbulb },
   { id: 'alertas', label: 'Alertas', icon: BellRing },
   { id: 'planos', label: 'Planos de Acao', icon: ClipboardList },
@@ -473,6 +471,13 @@ const journeys = [
   { name: 'Revisao de compliance', conversion: '61%', friction: 'Alta', score: 82, stage: 'Pendencia manual' },
 ];
 
+const journeySignals = {
+  'Cadastro corporativo': 'onboarding incompleto, feedback negativo',
+  'Verificacao de identidade': 'acessos negados, upload pendente',
+  'Ativacao de workspace': 'usuario criado, baixa friccao',
+  'Revisao de compliance': 'multiplos eventos, pendencia manual',
+};
+
 const signalGroups = [
   {
     group: 'onboarding',
@@ -832,12 +837,10 @@ function App() {
         </header>
 
         <div className="px-4 py-6 md:px-8">
-          {activePage === 'dashboard' && <Dashboard />}
+          {activePage === 'dashboard' && <ExecutiveDashboard />}
           {activePage === 'contas' && <Accounts />}
-          {activePage === 'usuarios' && <Users />}
           {activePage === 'jornadas' && <Journeys />}
           {activePage === 'riscos' && <Risks />}
-          {activePage === 'sinais' && <Signals />}
           {activePage === 'insights' && <Insights />}
           {activePage === 'alertas' && <Alerts />}
           {activePage === 'planos' && <ActionPlans />}
@@ -1125,6 +1128,105 @@ function Dashboard() {
   );
 }
 
+function ExecutiveDashboard() {
+  return (
+    <div className="space-y-6">
+      <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+        <div className="rounded-md border border-black/10 bg-ink p-5 text-white shadow-panel">
+          <div className="flex items-center gap-2 text-mint">
+            <BellRing size={18} />
+            <span className="text-sm font-semibold">Prioridade do dia</span>
+          </div>
+          <h2 className="mt-5 text-3xl font-semibold">{executiveFocus.name}</h2>
+          <p className="mt-2 text-sm text-white/75">Conta com maior urgencia para acao operacional.</p>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <div className="rounded-md border border-white/10 bg-white/10 p-4">
+              <p className="text-sm font-semibold text-mint">Motivos</p>
+              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-white/80">
+                {executiveFocusReasons.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-md border border-white/10 bg-white/10 p-4">
+              <p className="text-sm font-semibold text-mint">Acao sugerida</p>
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-white/80">
+                {executiveFocusActions.map((action) => (
+                  <li key={action} className="flex gap-2">
+                    <CheckCircle2 className="mt-0.5 shrink-0 text-mint" size={16} />
+                    <span>{action}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
+          <SectionTitle icon={Gauge} title="Indicadores rapidos" />
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {metrics.slice(0, 4).map((metric) => {
+              const Icon = metric.icon;
+              return (
+                <div key={metric.label} className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-moss">{metric.label}</span>
+                    <span className={`flex h-9 w-9 items-center justify-center rounded-md ${metric.tone}`}>
+                      <Icon size={17} />
+                    </span>
+                  </div>
+                  <p className="mt-3 text-2xl font-semibold">{metric.value}</p>
+                  <p className="mt-1 text-xs text-moss">{metric.detail}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
+        <SectionTitle icon={ShieldAlert} title="Prioridades automaticas" />
+        <div className="mt-5 grid gap-4 xl:grid-cols-3">
+          {topPriorityAccounts.map((account, index) => (
+            <article key={account.name} className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-coral">#{index + 1} no ranking</p>
+                  <h3 className="mt-2 text-lg font-semibold">{account.name}</h3>
+                </div>
+                <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ${statusTone(account.nivel)}`}>{account.nivel}</span>
+              </div>
+              <div className="mt-4 flex items-center gap-3">
+                <div className="rounded-md border border-black/10 bg-white px-3 py-2">
+                  <p className="text-xs text-moss">Prioridade</p>
+                  <p className="text-xl font-semibold">P{account.priority}</p>
+                </div>
+                <div className="rounded-md border border-black/10 bg-white px-3 py-2">
+                  <p className="text-xs text-moss">Score</p>
+                  <p className="text-xl font-semibold">{account.score}</p>
+                </div>
+              </div>
+              <p className="mt-4 rounded-md border border-black/10 bg-white p-3 text-sm leading-6 text-graphite">"{account.acaoSugerida}"</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
+        <SectionTitle icon={Brain} title="Insights automaticos" />
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          {dashboardInsights.map((insight, index) => (
+            <article key={insight} className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
+              <p className="text-sm font-semibold text-coral">Insight {index + 1}</p>
+              <p className="mt-2 text-sm leading-6 text-graphite">"{insight}"</p>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function HelpPanel({ onClose, onStartTour }) {
   return (
     <div className="fixed inset-0 z-40 bg-black/30">
@@ -1249,8 +1351,16 @@ function Accounts() {
     <DataTable
       title="Contas monitoradas"
       icon={Layers3}
-      columns={['Conta', 'Segmento', 'Score', 'Risco', 'Sinais ativos', 'Friccao principal']}
-      rows={accounts.map((item) => [item.name, item.segment, item.score, item.risk, item.reasons.join(', ') || 'sem sinal critico', item.friction])}
+      columns={['Conta', 'Segmento', 'Score', 'Risco', 'Usuarios criticos', 'Sinais ativos', 'Friccao principal']}
+      rows={accounts.map((item) => [
+        item.name,
+        item.segment,
+        item.score,
+        item.risk,
+        users.filter((user) => user.account === item.name && ['Critico', 'Atencao'].includes(user.status)).map((user) => `${user.name} (${user.status})`).join(', ') || 'sem usuario critico',
+        item.reasons.join(', ') || 'sem sinal critico',
+        item.friction,
+      ])}
       badgeIndexes={[3]}
     />
   );
@@ -1261,7 +1371,7 @@ function Users() {
 }
 
 function Journeys() {
-  return <DataTable title="Jornadas de onboarding" icon={GitBranch} columns={['Jornada', 'Conversao', 'Score', 'Friccao', 'Etapa sensivel']} rows={journeys.map((item) => [item.name, item.conversion, item.score, item.friction, item.stage])} badgeIndexes={[3]} />;
+  return <DataTable title="Jornadas de onboarding" icon={GitBranch} columns={['Jornada', 'Conversao', 'Score', 'Friccao', 'Etapa sensivel', 'Sinais relacionados']} rows={journeys.map((item) => [item.name, item.conversion, item.score, item.friction, item.stage, journeySignals[item.name]])} badgeIndexes={[3]} />;
 }
 
 function Risks() {
