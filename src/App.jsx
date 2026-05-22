@@ -533,6 +533,21 @@ const executiveSummary = [
     : 'Feedbacks negativos nao aparecem como fator dominante neste ciclo.',
 ];
 
+const executiveFocus = topPriorityAccounts[0];
+const executiveFocusReasons = ['onboarding incompleto', 'acessos negados recorrentes', 'feedback negativo'];
+const executiveFocusActions = ['acompanhar onboarding', 'revisar permissoes'];
+const ecosystemTrend = {
+  risk: 'aumentando',
+  averageScore: Math.round(accounts.reduce((total, account) => total + account.score, 0) / accounts.length),
+  impactedAccounts: impactedAccounts.length,
+  interpretation: 'Aumento de sinais operacionais nas ultimas analises.',
+};
+const dashboardInsights = [
+  'Feedback negativo aparece em 2 contas com risco medio.',
+  'Onboarding incompleto e o sinal mais recorrente.',
+  'Acessos negados aparecem associados a aumento de score.',
+];
+
 const audit = [
   ...accounts.map((account, index) => ({
     event: `Score calculado para ${account.name}: ${account.score}`,
@@ -839,6 +854,83 @@ function App() {
 function Dashboard() {
   return (
     <div className="space-y-6">
+      <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
+          <SectionTitle icon={ShieldAlert} title="O que precisa de atencao agora?" />
+          <div className="mt-5 grid gap-4 md:grid-cols-[0.8fr_1.2fr]">
+            <div className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
+              <p className="text-sm text-moss">Prioridade maxima</p>
+              <h3 className="mt-2 text-2xl font-semibold">{executiveFocus.name}</h3>
+              <span className={`mt-4 inline-flex rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ${statusTone(executiveFocus.nivel)}`}>{executiveFocus.nivel}</span>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
+                <p className="font-semibold">Motivos</p>
+                <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-graphite">
+                  {executiveFocusReasons.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
+                <p className="font-semibold">Acao sugerida</p>
+                <ul className="mt-3 space-y-2 text-sm leading-6 text-graphite">
+                  {executiveFocusActions.map((action) => (
+                    <li key={action} className="flex gap-2">
+                      <CheckCircle2 className="mt-0.5 shrink-0 text-moss" size={16} />
+                      <span>{action}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
+          <SectionTitle icon={LineChart} title="Tendencia do ecossistema" />
+          <div className="mt-5 grid gap-3">
+            <div className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
+              <p className="text-sm text-moss">Risco medio</p>
+              <p className="mt-2 text-2xl font-semibold">aumentando</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
+                <p className="text-sm text-moss">Score medio</p>
+                <p className="mt-2 text-3xl font-semibold">{ecosystemTrend.averageScore}</p>
+              </div>
+              <div className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
+                <p className="text-sm text-moss">Contas impactadas</p>
+                <p className="mt-2 text-3xl font-semibold">{ecosystemTrend.impactedAccounts}</p>
+              </div>
+            </div>
+            <p className="rounded-md border border-black/10 bg-[#f9faf7] p-4 text-sm leading-6 text-graphite">"{ecosystemTrend.interpretation}"</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
+          <SectionTitle icon={Brain} title="Insights automaticos" />
+          <div className="mt-5 grid gap-3">
+            {dashboardInsights.map((insight, index) => (
+              <article key={insight} className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
+                <p className="text-sm font-semibold text-coral">Insight {index + 1}</p>
+                <p className="mt-2 text-sm leading-6 text-graphite">"{insight}"</p>
+              </article>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
+          <SectionTitle icon={Lightbulb} title="O que isso significa?" />
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <ValueFlow title="Sem inteligencia" steps={['Eventos isolados', 'analise manual', 'resposta tardia']} />
+            <ValueFlow title="Com inteligencia" steps={['eventos correlacionados', 'risco identificado', 'acao preventiva']} />
+          </div>
+        </div>
+      </section>
+
       <section className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
         <div className="rounded-md border border-black/10 bg-white p-5 shadow-panel">
           <p className="text-sm font-semibold uppercase tracking-normal text-coral">Inteligencia preditiva para onboarding</p>
