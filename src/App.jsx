@@ -420,8 +420,8 @@ const actionPlanSummary = {
 const simulationScenarios = [
   {
     id: 'abandono-onboarding',
-    label: 'Abandono de onboarding',
-    signals: ['onboarding iniciado', 'feedback negativo', 'acessos negados'],
+    label: 'Cliente abandonou onboarding',
+    signals: ['onboarding incompleto', 'acessos negados', 'feedback negativo'],
     score: 75,
     risk: 'Alto',
     explanation: 'Conta apresenta onboarding incompleto combinado com feedback negativo.',
@@ -430,8 +430,8 @@ const simulationScenarios = [
   },
   {
     id: 'acessos-negados',
-    label: 'Excesso de acessos negados',
-    signals: ['acesso negado', 'acesso negado recorrente', 'multiplos eventos'],
+    label: 'Muitos acessos negados',
+    signals: ['acessos negados', 'acesso negado recorrente', 'multiplos eventos'],
     score: 70,
     risk: 'Alto',
     explanation: 'Conta apresenta recorrencia de acessos negados com sinais operacionais simultaneos.',
@@ -826,7 +826,7 @@ function App() {
           {activePage === 'insights' && <Insights />}
           {activePage === 'alertas' && <Alerts />}
           {activePage === 'planos' && <ActionPlans />}
-          {activePage === 'simulacoes' && <Simulations />}
+          {activePage === 'simulacoes' && <ProductSimulations />}
           {activePage === 'auditoria' && <Audit />}
         </div>
       </main>
@@ -1433,6 +1433,125 @@ function Simulations() {
         </section>
       </div>
     </PagePanel>
+  );
+}
+
+function ProductSimulations() {
+  const [selectedScenarioId, setSelectedScenarioId] = useState(simulationScenarios[0].id);
+  const scenario = simulationScenarios.find((item) => item.id === selectedScenarioId);
+
+  return (
+    <PagePanel title="Simulacoes Inteligentes" icon={FlaskConical}>
+      <div className="rounded-md border border-black/10 bg-[#f9faf7] p-5">
+        <p className="text-sm leading-6 text-graphite">Veja como a plataforma reage a problemas reais.</p>
+      </div>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
+        <section className="rounded-md border border-black/10 bg-[#f9faf7] p-5">
+          <h3 className="font-semibold">Escolha uma situacao</h3>
+          <div className="mt-4 space-y-2">
+            {simulationScenarios.map((item) => (
+              <label
+                key={item.id}
+                className={`flex cursor-pointer items-center gap-3 rounded-md border p-3 text-sm font-medium transition ${
+                  selectedScenarioId === item.id ? 'border-ink bg-white text-ink' : 'border-black/10 bg-white/70 text-graphite hover:bg-white'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="product-simulation-scenario"
+                  value={item.id}
+                  checked={selectedScenarioId === item.id}
+                  onChange={() => setSelectedScenarioId(item.id)}
+                  className="h-4 w-4 accent-ink"
+                />
+                {item.label}
+              </label>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-md border border-black/10 bg-[#f9faf7] p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-coral">Demonstracao ativa</p>
+              <h3 className="mt-1 text-xl font-semibold">{scenario.label}</h3>
+            </div>
+            <span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ${statusTone(scenario.risk)}`}>{scenario.risk}</span>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <div className="rounded-md border border-black/10 bg-white p-4">
+              <p className="text-sm font-semibold">O que a plataforma percebeu</p>
+              <p className="mt-3 text-sm text-moss">Sinais encontrados:</p>
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-graphite">
+                {scenario.signals.map((signal) => (
+                  <li key={signal} className="flex gap-2">
+                    <CheckCircle2 className="mt-0.5 shrink-0 text-moss" size={16} />
+                    <span>{signal}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-md border border-black/10 bg-white p-4">
+              <p className="text-sm font-semibold">Resultado da analise</p>
+              <p className="mt-3 text-sm text-moss">Risco identificado</p>
+              <p className="mt-1 text-2xl font-semibold">{scenario.risk}</p>
+              <p className="mt-3 text-sm text-moss">Score</p>
+              <p className="mt-1 text-4xl font-semibold">{scenario.score}</p>
+              <p className="mt-3 text-sm font-semibold">Motivo:</p>
+              <p className="mt-1 text-sm leading-6 text-graphite">Combinacao de multiplos sinais de friccao operacional</p>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-md border border-black/10 bg-white p-4">
+            <p className="text-sm font-semibold">Explicacao automatica</p>
+            <p className="mt-2 text-sm leading-6 text-graphite">"{scenario.explanation}"</p>
+          </div>
+
+          <div className="mt-5 rounded-md border border-black/10 bg-white p-4">
+            <p className="text-sm font-semibold">Alerta</p>
+            <p className="mt-2 text-sm leading-6 text-graphite">Acompanhamento necessario: {scenario.alert}</p>
+          </div>
+
+          <div className="mt-5 rounded-md border border-black/10 bg-white p-4">
+            <p className="text-sm font-semibold">Acao sugerida</p>
+            <ul className="mt-3 space-y-2 text-sm leading-6 text-graphite">
+              {scenario.plan.map((step) => (
+                <li key={step} className="flex gap-2">
+                  <CheckCircle2 className="mt-0.5 shrink-0 text-moss" size={16} />
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="mt-5 rounded-md border border-black/10 bg-white p-4">
+            <p className="text-sm font-semibold">O valor da plataforma</p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <ValueFlow title="Sem inteligencia" steps={['Evento isolado', 'Analise manual', 'Resposta tardia']} />
+              <ValueFlow title="Com inteligencia" steps={['Eventos conectados', 'Risco identificado', 'Acao preventiva']} />
+            </div>
+          </div>
+        </section>
+      </div>
+    </PagePanel>
+  );
+}
+
+function ValueFlow({ title, steps }) {
+  return (
+    <div className="rounded-md border border-black/10 bg-[#f9faf7] p-4">
+      <p className="font-semibold">{title}</p>
+      <div className="mt-3 space-y-2 text-center text-sm text-graphite">
+        {steps.map((item, index) => (
+          <div key={item}>
+            <div className="rounded-md border border-black/10 bg-white px-3 py-2">{item}</div>
+            {index < steps.length - 1 && <div className="py-1 text-moss">↓</div>}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
